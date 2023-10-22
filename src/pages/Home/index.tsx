@@ -7,7 +7,6 @@ import DatePicker from 'src/components/DatePicker';
 
 import { TipoViagem, Viagem } from 'src/types/viagem';
 
-import { carregarDestinos, carregarOrigens, getViagens } from 'src/services/viagens';
 import { filtrarViagens, filtrosEstaoVazios } from './utils/filtros';
 
 import banner from 'assets/home/banner.png';
@@ -19,29 +18,26 @@ import useSnackbar from 'src/contexts/Snackbar';
 
 import styles from './styles';
 import { valoresPadrao } from './consts';
-import { useDispatch, useSelector } from 'react-redux';
-import store, { RootState } from 'src/store';
 import { DrawerScreenProps } from '@react-navigation/drawer';
 import { RootStackParamList } from 'src/routes';
-import { carregarDados } from 'src/store/reducers/viagem';
+import { carregarDados } from 'src/store/reducers/viagem/middlewares';
+import { useAppDispatch, useAppSelector } from 'src/store/hooks';
 
 export default function Home(props: DrawerScreenProps<RootStackParamList, "Home">) {
-  const totalPaginasRef = useRef<number>(1);
   const todasAsViagens = useRef<Viagem[]>([]);
-  const [paginaAtual, setPaginaAtual] = useState<number>(1);
-  const [viagens, setViagens] = useState<Viagem[]>([]);
-  const [origens, setOrigens] = useState<string[]>([]);
-  const [destinos, setDestinos] = useState<string[]>([]);
   const [tipo, setTipo] = useState<Filtros['tipo']>(valoresPadrao.tipo);
   const [pessoas, setPessoas] = useState<Filtros['pessoas']>(valoresPadrao.pessoas);
   const [origem, setOrigem] = useState<Filtros['origem']>(valoresPadrao.origem);
   const [destino, setDestino] = useState<Filtros['destino']>(valoresPadrao.destino);
   const [dataIda, setDataIda] = useState<Filtros['dataIda']>(valoresPadrao.dataIda);
   const [dataVolta, setDataVolta] = useState<Filtros['dataVolta']>(valoresPadrao.dataVolta);
-  const [buscando, setBuscando] = useState<boolean>(false);
   const [filtrarPorUsuario, setFiltrarPorUsuario] = useState<Filtros['filtrarPorUsuario']>(valoresPadrao.filtrarPorUsuario);
   const { criarMensagem } = useSnackbar();
-  const usuarioLogado = useSelector((state: RootState) => state.usuario.usuarioLogado);
+  const usuarioLogado = useAppSelector(state => state.usuario.usuarioLogado);
+  const dispatch = useAppDispatch();
+  const { buscando, paginaAtual, totalPaginas, viagens } = useAppSelector(state => state.viagem);
+  const { destinos, origens } = useAppSelector(state => state.filtro);
+
   const { cidade = '', estado = '' } = usuarioLogado || {};
   const filtros: Filtros = {
     pessoas, tipo, origem, destino, filtrarPorUsuario, dataIda, dataVolta
@@ -49,8 +45,7 @@ export default function Home(props: DrawerScreenProps<RootStackParamList, "Home"
   const mostrarTodasAsViagens = filtrarPorUsuario === 'todas';
   const mostrarViagensPorCidade = filtrarPorUsuario === 'cidade';
   const mostrarViagensPorEstado = filtrarPorUsuario === 'estado';
-  const ehUltimaPagina = paginaAtual === totalPaginasRef.current;
-  const dispatch = useDispatch<typeof store.dispatch>();
+  const ehUltimaPagina = paginaAtual === totalPaginas;
 
   const trocarOrigemDestino = () => {
     const tmp = origem;
@@ -65,14 +60,14 @@ export default function Home(props: DrawerScreenProps<RootStackParamList, "Home"
       );
 
   const carregarMais = async () => {
-    setBuscando(true);
-    const { novasViagens, pagina } = await getViagens(paginaAtual + 1);
-    todasAsViagens.current = [...todasAsViagens.current, ...novasViagens];
-    startTransition(() => {
-      setPaginaAtual(pagina);
-      setViagens(viagensAtuais => [...viagensAtuais, ...novasViagens]);
-    })
-    setBuscando(false);
+    // setBuscando(true);
+    // const { novasViagens, pagina } = await getViagens(paginaAtual + 1);
+    // todasAsViagens.current = [...todasAsViagens.current, ...novasViagens];
+    // startTransition(() => {
+    //   setPaginaAtual(pagina);
+    //   setViagens(viagensAtuais => [...viagensAtuais, ...novasViagens]);
+    // })
+    // setBuscando(false);
   }
 
   // const carregarDados = async () => {
@@ -115,15 +110,13 @@ export default function Home(props: DrawerScreenProps<RootStackParamList, "Home"
   useEffect(() => void dispatch(carregarDados()), []);
 
   const handleBuscar = async () => {
-    setBuscando(true);
     let novasViagens = [];
     const filtrosVazios = filtrosEstaoVazios(filtros);
     if (filtrosVazios) novasViagens = todasAsViagens.current;
     else novasViagens = await filtrarViagens(todasAsViagens.current, filtros, cidade, estado);
-    setViagens(novasViagens);
+    // setViagens(novasViagens);
     if (!novasViagens.length) return criarMensagem.erro('nenhuma viagem encontrada');
     if (!filtrosVazios) criarMensagem.sucesso(`${novasViagens.length} viagens encontradas`);
-    setBuscando(false);
   }
 
   return (
