@@ -1,5 +1,6 @@
 import { Viagem } from 'src/types/viagem';
-import { createSlice } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { carregarDestinos, carregarOrigens, getViagens } from 'src/services/viagens';
 
 interface InitialState {
   viagens: Viagem[],
@@ -15,10 +16,37 @@ const initialState: InitialState = {
   buscando: false
 }
 
+export const carregarDados = createAsyncThunk(
+  'viagem/carregarDados',
+  async () => {
+    const [viagensData, novasOrigens, novosDestinos] = await Promise.all([
+      getViagens(),
+      carregarOrigens(),
+      carregarDestinos(),
+    ]);
+    const { pagina, totalPaginas, novasViagens } = viagensData;
+    
+    return {
+      paginaAtual: pagina,
+      totalPaginas,
+      viagens: novasViagens,
+      destinos: novosDestinos,
+      origens: novasOrigens
+    }
+  }
+);
+
 const viagemSlice = createSlice({
   initialState,
   name: "viagem",
-  reducers: {}
+  reducers: {},
+  extraReducers: (builder) => {
+    builder.addCase(carregarDados.fulfilled, (state, { payload }) => {
+      state.viagens = payload.viagens;
+      state.paginaAtual = payload.paginaAtual;
+      state.totalPaginas = payload.totalPaginas;
+    })
+  }
 });
 
 export default viagemSlice.reducer;
