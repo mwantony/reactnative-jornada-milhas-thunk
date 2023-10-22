@@ -1,6 +1,6 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, isAnyOf } from '@reduxjs/toolkit';
 import { InitialState } from './type';
-import { carregarDados } from './middlewares';
+import { carregarDados, carregarMaisViagens } from './middlewares';
 
 const initialState: InitialState = {
   viagens: [],
@@ -15,14 +15,28 @@ const viagemSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
-      .addCase(carregarDados.pending, (state) => { state.buscando = true })
       .addCase(carregarDados.fulfilled, (state, { payload }) => {
         state.viagens = payload.viagens;
         state.paginaAtual = payload.paginaAtual;
         state.totalPaginas = payload.totalPaginas;
-        state.buscando = false;
       })
-      .addCase(carregarDados.rejected, (state) => { state.buscando = false })
+      .addCase(carregarMaisViagens.fulfilled, (state, { payload }) => {
+        state.viagens.push(...payload.novasViagens);
+        state.paginaAtual = payload.pagina;
+      })
+      .addMatcher(
+        isAnyOf(carregarDados.pending, carregarMaisViagens.pending),
+        (state) => { state.buscando = true }
+      )
+      .addMatcher(
+        isAnyOf(
+          carregarDados.fulfilled,
+          carregarMaisViagens.fulfilled,
+          carregarDados.rejected,
+          carregarMaisViagens.rejected
+        ),
+        (state) => { state.buscando = false }
+      )
   }
 });
 
